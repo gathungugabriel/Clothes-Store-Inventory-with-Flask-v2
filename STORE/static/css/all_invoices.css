@@ -1,0 +1,90 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+/* Form styles */
+form {
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+label {
+    margin-right: 10px;
+}
+
+input[type="text"],
+input[type="date"] {
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin-right: 20px;
+}
+
+button[type="submit"] {
+    padding: 5px 10px;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+button[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+/* Table styles */
+.table-responsive {
+    display: block;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead.sticky-top th {
+    position: sticky;
+    top: 0;
+    background-color: #FFC300; /* Lighter Yellow */
+    color: #0A1931; /* Dark Blue */
+    z-index: 1000;
+}
+
+th,
+td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #FFC300; /* Lighter Yellow */
+    color: #0A1931; /* Dark Blue */
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+tr:hover {
+    background-color: #ddd;
+}
+
+/* Action button styles */
+form button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+form button:hover {
+    background-color: #0056b3;
+}

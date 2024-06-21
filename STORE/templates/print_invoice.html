@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/print_invoice.css') }}">
+<div class="invoice-container printable">
+    <div class="invoice-header">
+        <h1>Invoice #{{ invoice.id }}</h1>
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Company Logo">
+    </div>
+    <div class="invoice-details">
+        <p><strong>Customer Name:</strong> {{ invoice.customer_name }}</p>
+        <p><strong>Customer Email:</strong> {{ invoice.customer_email }}</p>
+        <p><strong>Date:</strong> {{ invoice.date_created.strftime('%Y-%m-%d') }}</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Product Code</th>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in invoice.items %}
+            <tr>
+                <td>{{ item.product_variant.product_id }}</td>
+                <td>{{ item.product_variant.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>KSh {{ item.product_variant.selling_price }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="total-amount">Total Amount:</td>
+                <td>KSh {{ invoice.total_amount }}</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+<a href="#" class="print-button" onclick="window.print();">Print Invoice</a>
+{% endblock %}

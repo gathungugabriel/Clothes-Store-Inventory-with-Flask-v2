@@ -1,0 +1,66 @@
+code,item,category,type_material,size,color,description,buying_price,selling_price,quantity
+SC0001,Shirt,Casual,Cotton,M,Blue,Blue casual cotton shirt,10,15,1
+SC0002,Shirt,Casual,Cotton,L,Red,Red casual cotton shirt,10,15,1
+SC0003,Shirt,Casual,Linen,S,White,White casual linen shirt,12,18,1
+SC0004,Shirt,Casual,Polyester,XL,Black,Black casual polyester shirt,8,12,1
+SO0001,Shirt,Official,Cotton,M,White,White official cotton shirt,15,25,1
+SO0002,Shirt,Official,Silk,L,Blue,Blue official silk shirt,20,30,1
+SO0003,Shirt,Official,Polyester,XL,Grey,Grey official polyester shirt,10,20,1
+SO0004,Shirt,Official,Cotton,S,Pink,Pink official cotton shirt,12,18,1
+TC0001,Trouser,Casual,Denim,32,Blue,Blue casual denim jeans,20,35,1
+TC0002,Trouser,Casual,Chino,34,Khaki,Khaki casual chino pants,18,30,1
+TC0003,Trouser,Casual,Denim,36,Black,Black casual denim jeans,22,37,1
+TC0004,Trouser,Casual,Cotton,30,Green,Green casual cotton pants,15,25,1
+TO0001,Trouser,Official,Wool,32,Grey,Grey official wool trousers,25,40,1
+TO0002,Trouser,Official,Polyester,34,Black,Black official polyester trousers,20,30,1
+TO0003,Trouser,Official,Cotton,36,Navy,Navy official cotton trousers,22,35,1
+TO0004,Trouser,Official,Linen,30,White,White official linen trousers,28,45,1
+TSC0001,T-Shirt,Casual,Cotton,M,White,White casual cotton t-shirt,8,12,1
+TSC0002,T-Shirt,Casual,Polyester,L,Black,Black casual polyester t-shirt,7,10,1
+TSC0003,T-Shirt,Casual,Linen,XL,Red,Red casual linen t-shirt,10,15,1
+TSC0004,T-Shirt,Casual,Blended,S,Green,Green casual blended t-shirt,6,9,1
+TSO0001,T-Shirt,Official,Cotton,L,Blue,Blue official cotton t-shirt,12,18,1
+TSO0002,T-Shirt,Official,Silk,M,White,White official silk t-shirt,15,25,1
+TSO0003,T-Shirt,Official,Polyester,XL,Grey,Grey official polyester t-shirt,10,17,1
+TSO0004,T-Shirt,Official,Linen,S,Black,Black official linen t-shirt,14,22,1
+SWC0001,Sweater,Casual,Wool,M,Brown,Brown casual wool sweater,18,28,1
+SWC0002,Sweater,Casual,Cashmere,L,Black,Black casual cashmere sweater,25,35,1
+SWC0003,Sweater,Casual,Cotton,XL,Grey,Grey casual cotton sweater,20,30,1
+SWC0004,Sweater,Casual,Blended,S,Red,Red casual blended sweater,15,25,1
+SWO0001,Sweater,Official,Silk,M,Blue,Blue official silk sweater,28,40,1
+SWO0002,Sweater,Official,Wool,L,Navy,Navy official wool sweater,22,35,1
+SWO0003,Sweater,Official,Cashmere,XL,Black,Black official cashmere sweater,30,45,1
+SWO0004,Sweater,Official,Cotton,S,White,White official cotton sweater,18,27,1
+CC0001,Coat,Casual,Cotton,M,Beige,Beige casual cotton coat,35,50,1
+CC0002,Coat,Casual,Polyester,L,Black,Black casual polyester coat,30,45,1
+CC0003,Coat,Casual,Wool,XL,Green,Green casual wool coat,40,60,1
+CC0004,Coat,Casual,Linen,S,Grey,Grey casual linen coat,38,55,1
+CO0001,Coat,Official,Cashmere,M,Navy,Navy official cashmere coat,45,70,1
+CO0002,Coat,Official,Wool,L,Black,Black official wool coat,50,75,1
+CO0003,Coat,Official,Polyester,XL,Grey,Grey official polyester coat,35,50,1
+CO0004,Coat,Official,Linen,S,White,White official linen coat,42,65,1
+SUC0001,Suit,Casual,Cotton,M,Blue,Blue casual cotton suit,55,80,1
+SUC0002,Suit,Casual,Linen,L,Black,Black casual linen suit,60,90,1
+SUC0003,Suit,Casual,Polyester,XL,Grey,Grey casual polyester suit,50,75,1
+SUC0004,Suit,Casual,Blended,S,White,White casual blended suit,45,65,1
+SUO0001,Suit,Official,Wool,M,Black,Black official wool suit,70,100,1
+SUO0002,Suit,Official,Silk,L,Grey,Grey official silk suit,75,110,1
+SUO0003,Suit,Official,Cotton,XL,Navy,Navy official cotton suit,65,95,1
+SUO0004,Suit,Official,Linen,S,White,White official linen suit,80,120,1
+TIE0001,Tie,,Silk,,Red,Red silk tie,8,12,1
+TIE0002,Tie,,Polyester,,Blue,Blue polyester tie,5,8,1
+TIE0003,Tie,,Cotton,,Black,Black cotton tie,6,10,1
+TIE0004,Tie,,Linen,,Grey,Grey linen tie,7,11,1
+BLT0001,Belt,,Leather,,Black,Black leather belt,10,15,1
+BLT0002,Belt,,Synthetic,,Brown,Brown synthetic belt,7,10,1
+BLT0003,Belt,,Fabric,,Blue,Blue fabric belt,5,8,1
+BLT0004,Belt,,Blended,,Red,Red blended belt,6,9,1
+SHRT0001,Short,Casual,Cotton,M,Blue,Blue casual cotton shorts,12,18,1
+SHRT0002,Short,Casual,Polyester,L,Black,Black casual polyester shorts,10,15,1
+SHRT0003,Short,Casual,Denim,XL,Grey,Grey casual denim shorts,15,20,1
+SHRT0004,Short,Casual,Blended,S,White,White casual blended shorts,11,16,1
+SHC0001,Shoes,Casual,Leather,10,Brown,Brown casual leather shoes,35,50,1
+SHC0002,Shoes,Casual,Canvas,9,Blue,Blue casual canvas shoes,25,35,1
+SHC0003,Shoes,Casual,Suede,11,Black,Black casual suede shoes,30,45,1
+SHC0004,Shoes,Casual,Blended,8,White,White casual blended shoes,20,30,1
+SHC0005,Shoes,Casual,Blended,9,White,White casual blended shoes,20,30,1

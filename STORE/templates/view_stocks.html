@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}View Stock{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col">
+        <h2>Stock</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Product Class</th>
+                    <th>Pieces</th>
+                    <th>Buying Price Summation</th>
+                    <th>Selling Price Summation</th>
+                    <th>Profit Summation</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stock %}
+                <tr>
+                    <td>{{ item.product_code }}</td>
+                    <td>{{ item.pieces }}</td>
+                    <td>{{ item.bp_summation }}</td>
+                    <td>{{ item.sp_summation }}</td>
+                    <td>{{ item.profit_summation }}</td>
+                    <td>
+                        <a href="{{ url_for('stock_details', code=item.product_code) }}" class="btn btn-primary">Expand</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td><strong>Total</strong></td>
+                    <td><strong>{{ total_pieces }}</strong></td>
+                    <td><strong>{{ total_bp_summation }}</strong></td>
+                    <td><strong>{{ total_sp_summation }}</strong></td>
+                    <td><strong>{{ total_profit_summation }}</strong></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

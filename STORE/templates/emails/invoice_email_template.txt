@@ -1,0 +1,12 @@
+Invoice #{{ invoice.id }}
+
+Date: {{ invoice.date_created }}
+Customer: {{ invoice.customer_name }}
+Email: {{ invoice.customer_email }}
+
+Product Code    Quantity
+{% for item in invoice.items %}
+{{ item.product_code }}    {{ item.quantity }}
+{% endfor %}
+
+Back to Home: {{ url_for('index') }}

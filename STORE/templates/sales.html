@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Sales{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/custom_table.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/all_invoices.css') }}">
+
+<div class="container">
+    <h1 class="mt-4 mb-4">Sales</h1>
+
+    <!-- Add a form for filtering criteria -->
+    <form action="{{ url_for('sales') }}" method="GET">
+        <div class="mb-3">
+            <label for="start_date">Start Date:</label>
+            <input type="date" id="start_date" name="start_date" value="{{ request.args.get('start_date') }}">
+        </div>
+        <div class="mb-3">
+            <label for="end_date">End Date:</label>
+            <input type="date" id="end_date" name="end_date" value="{{ request.args.get('end_date') }}">
+        </div>
+        <div class="mb-3">
+            <label for="product">Product:</label>
+            <select name="product" id="product" multiple>
+                <option value="">All Products</option>
+                <!-- Populate options dynamically with products from the database -->
+                {% for product in products %}
+                <option value="{{ product.code }}" {% if product.code in request.args.getlist('product') %}selected{% endif %}>
+                    {{ product.item }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="product_code">Product Code:</label>
+            <input type="text" id="product_code" name="product_code" value="{{ request.args.get('product_code') if request.args.get('product_code') else '' }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Apply Filters</button>
+    </form>
+    
+    <!-- Display sales data -->
+    <div class="table-responsive" style="display: block; max-height: 300px; overflow-y: auto;">
+        <table class="table table-bordered custom-table">
+            <thead class="sticky-top">
+                <tr>
+                    <th>ID</th>
+                    <th>Product Code</th>
+                    <th>Product</th>
+                    <th>Quantity Sold</th>
+                    <th>Price per Unit</th>
+                    <th>Total Sale Amount</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if sales %}
+                    {% for sale in sales %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ sale.product_code }}</td>
+                        <td>{{ sale.product.item }}</td>
+                        <td>{{ sale.quantity_sold }}</td>
+                        <td>KSh {{ sale.product.price }}</td>
+                        <td>KSh {{ sale.quantity_sold * sale.product.price }}</td>
+                        <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center">No sales found.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Display total amounts -->
+    {% if sales %}
+    <div>
+        <h3>Total Amount from Sales:</h3>
+        <p>KSh {{ total_sales_amount }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

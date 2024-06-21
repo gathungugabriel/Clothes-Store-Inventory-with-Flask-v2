@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Make Sale{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/all_invoices.css') }}">
+
+<h2>Make Sale</h2>
+<form action="{{ url_for('make_sale') }}" method="post">
+    <div class="form-group">
+        <label for="customer_name">Customer Name:</label>
+        <input type="text" id="customer_name" name="customer_name" class="form-control" required>
+    </div>
+    <div class="form-group">
+        <label for="customer_email">Customer Email:</label>
+        <input type="email" id="customer_email" name="customer_email" class="form-control" required>
+    </div>
+    <div id="products-container">
+        <div class="product-entry form-group">
+            <label for="product_code">Product Code:</label>
+            <input type="text" id="product_code" name="product_code[]" class="form-control product-code" required>
+        </div>
+    </div>
+    <button type="button" class="btn btn-secondary" id="add-product">Add Another Product</button>
+    <button type="submit" class="btn btn-primary">Make Sale</button>
+</form>
+
+<h3>Invoice Preview</h3>
+<table class="table table-bordered" id="invoice-preview">
+    <thead>
+        <tr>
+            <th>Product Code</th>
+            <th>Price</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Invoice items will be added here dynamically -->
+    </tbody>
+</table>
+
+<script>
+    document.getElementById('add-product').addEventListener('click', function () {
+        var container = document.getElementById('products-container');
+        var productEntry = document.querySelector('.product-entry').cloneNode(true);
+        container.appendChild(productEntry);
+        attachInputListeners();
+    });
+
+    function attachInputListeners() {
+        var productCodes = document.querySelectorAll('.product-code');
+
+        productCodes.forEach(function (input) {
+            input.addEventListener('input', updateInvoicePreview);
+        });
+    }
+
+    function updateInvoicePreview() {
+        var productCodes = document.querySelectorAll('.product-code');
+        var invoiceTableBody = document.getElementById('invoice-preview').querySelector('tbody');
+        invoiceTableBody.innerHTML = '';
+
+        productCodes.forEach(function (codeInput) {
+            var code = codeInput.value;
+
+            if (code) {
+                fetch(`/get_items_by_code`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code: code })
+                })
+                .then(response => response.json())
+                .then(product => {
+                    var row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${product.product_id}</td>
+                        <td>${product.selling_price.toFixed(2)}</td>
+                        <td>${product.selling_price.toFixed(2)}</td>
+                    `;
+                    invoiceTableBody.appendChild(row);
+                })
+                .catch(error => console.error('Error fetching product details:', error));
+            }
+        });
+    }
+
+    attachInputListeners();
+</script>
+{% endblock %}

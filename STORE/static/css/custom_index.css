@@ -1,0 +1,125 @@
+/* custom_index.css */
+
+/* General styles */
+body {
+    font-family: Arial, sans-serif;
+}
+
+/* Dashboard sidebar styles */
+.col-md-3 h3 {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.col-md-3 .btn {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+/* Main content styles */
+.col-md-9 {
+    padding-left: 20px;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+#searchInput {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+#searchButton {
+    padding: 10px 20px;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+#searchButton:hover {
+    background-color: #0056b3;
+}
+
+/* Table styles */
+.table-responsive {
+    display: block;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+    color: #eeebe0;
+}
+
+.table th {
+    background-color: rgba(20, 1, 1, 0.9);
+    color: azure;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.table tr:nth-child(even) {
+    background-color: #be4d4d;
+}
+
+.table tr:hover {
+    background-color: #ddd;
+}
+
+/* No results message */
+#noResultsMessage {
+    margin-top: 20px;
+}
+
+/* Toggle button styles */
+.toggle-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.toggle-button img {
+    width: 20px;
+}
+
+/* Alert message styles */
+.alert {
+    margin-top: 20px;
+}
+
+/* Nested table container */
+.nested-table-container {
+    transition: transform 0.3s ease;
+}
+
+/* Nested table row styles */
+.nested-table-row:nth-child(even) {
+    background-color: #e9ecef;
+}
+
+.nested-table-row:nth-child(odd) {
+    background-color: #f8f9fa;
+}
+
+.nested-table-total {
+    background-color: #343a40;
+    color: #fff;
+}
+
+.nested-table-total td {
+    font-weight: bold;
+}

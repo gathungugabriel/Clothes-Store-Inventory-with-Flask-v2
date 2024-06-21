@@ -1,0 +1,88 @@
+/* theme.css */
+
+/* General styling */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #FFC300; /* Lighter Yellow Background */
+    color: #1a3b70; /* Dark Blue Text */
+    margin: 0; /* Remove default margin */
+    padding: 0; /* Remove default padding */
+    height: 100vh; /* Full viewport height */
+}
+
+a {
+    color: #0A1931; /* Dark Blue Links */
+}
+
+.container {
+    background-color: #2074f1; /* Dark Blue Container */
+    color: #dfb315; /* Lighter Yellow Text */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin: 20px auto;
+    max-width: 1000px;
+}
+
+/* Header */
+.header {
+    background-color: #FFC300; /* Lighter Yellow Header */
+    color: #a2b9dd; /* Dark Blue Text */
+    padding: 20px;
+    text-align: center;
+}
+
+.header img {
+    max-width: 100px;
+    height: auto;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #0A1931; /* Dark Blue Button */
+    color: #FFC300; /* Lighter Yellow Text */
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+}
+
+.btn-primary:hover {
+    background-color: #0A1931; /* Dark Blue on Hover */
+    color: #FFD700; /* Lighter Yellow Text */
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    background-color: #0A1931; /* Dark Blue Table Background */
+    color: #FFC300; /* Lighter Yellow Text */
+}
+
+table thead th {
+    background-color: #FFC300; /* Lighter Yellow Header */
+    color: #0A1931; /* Dark Blue Text */
+}
+
+table th, table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+table tr:hover {
+    background-color: #f1f1f1;
+}
+
+table th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+}

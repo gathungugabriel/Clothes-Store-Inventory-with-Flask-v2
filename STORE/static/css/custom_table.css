@@ -1,0 +1,63 @@
+
+/* Ensure all theads are sticky */
+thead.sticky-top {
+    background-color: rgba(20, 1, 1, 0.9);
+    color: azure;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Style for the search form */
+form {
+    margin-bottom: 20px;
+}
+
+label {
+    margin-right: 10px;
+}
+
+input[type="text"],
+input[type="date"] {
+    margin-right: 20px;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+button[type="submit"] {
+    padding: 5px 10px;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+button[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+/* Style for the invoice table */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+tr:hover {
+    background-color: #ddd;
+}
