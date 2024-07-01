@@ -10,7 +10,7 @@
     <h1 class="mt-4 mb-4">Sales</h1>
 
     <!-- Add a form for filtering criteria -->
-    <form action="{{ url_for('sales') }}" method="GET">
+    <form action="{{ url_for('routes.sales') }}" method="GET">
         <div class="mb-3">
             <label for="start_date">Start Date:</label>
             <input type="date" id="start_date" name="start_date" value="{{ request.args.get('start_date') }}">
@@ -37,7 +37,28 @@
         </div>
         <button type="submit" class="btn btn-primary">Apply Filters</button>
     </form>
-    
+
+    <!-- Display applied filters -->
+    {% if filtering_criteria_present %}
+    <div class="mt-4 mb-4">
+        <h3>Applied Filters:</h3>
+        <ul>
+            {% if start_date %}
+            <li>Start Date: {{ start_date }}</li>
+            {% endif %}
+            {% if end_date %}
+            <li>End Date: {{ end_date }}</li>
+            {% endif %}
+            {% if product_codes %}
+            <li>Product Codes: {{ product_codes|join(', ') }}</li>
+            {% endif %}
+            {% if entered_product_code %}
+            <li>Entered Product Code: {{ entered_product_code }}</li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+
     <!-- Display sales data -->
     <div class="table-responsive" style="display: block; max-height: 300px; overflow-y: auto;">
         <table class="table table-bordered custom-table">
@@ -60,8 +81,8 @@
                         <td>{{ sale.product_code }}</td>
                         <td>{{ sale.product.item }}</td>
                         <td>{{ sale.quantity_sold }}</td>
-                        <td>KSh {{ sale.product.price }}</td>
-                        <td>KSh {{ sale.quantity_sold * sale.product.price }}</td>
+                        <td>KSh {{ sale.product.selling_price }}</td>
+                        <td>KSh {{ sale.quantity_sold * sale.product.selling_price }}</td>
                         <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
                     </tr>
                     {% endfor %}

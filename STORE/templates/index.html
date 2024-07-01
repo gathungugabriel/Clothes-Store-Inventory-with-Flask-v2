@@ -19,6 +19,9 @@ Home - Inventory System
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.add_product') }}" role="button" id="addDataButton">Add Product</a>
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.upload_csv') }}" role="button">Upload CSV</a>
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.view_stock') }}" role="button">View Stock</a>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.make_sale') }}" role="button">Make Sale</a>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.sales') }}" role="button">Sales</a>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.invoices') }}" role="button">Invoices</a>
     {% else %}
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.login') }}" role="button">Login</a>
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.register') }}" role="button">Register</a>

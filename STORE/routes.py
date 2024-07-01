@@ -3,12 +3,13 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 import os
 from . import db
-from .models import User, Product, Stock
+from .models import User, Product, Stock, Sale, Invoice, InvoiceItem
 from .forms import LoginForm, RegistrationForm, UpdateProductForm
 from .utils import extract_non_numeric, generate_tag
 from add_data import add_products_from_csv
 from sqlalchemy.exc import IntegrityError
 from .utils import prefixes
+from datetime import datetime
 
 # Create a Blueprint for routes
 bp = Blueprint('routes', __name__)
@@ -153,7 +154,7 @@ def view_stock():
     item_names = {}
 
     for item in stock:
-        prefix = item['product_code'][:3]
+        prefix = item['product_code'][:2]
         if prefix not in grouped_stock:
             grouped_stock[prefix] = []
             total_pieces_per_prefix[prefix] = 0
@@ -293,3 +294,112 @@ def update_stock():
         )
         db.session.add(stock)
     db.session.commit()
+
+@bp.route('/sales', methods=['GET', 'POST'])
+@login_required
+def sales():
+    # Start with the base query joining Sale with Product
+    sales_query = Sale.query.join(Product)
+
+    # Extract filtering criteria from request args
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    product_codes = request.args.getlist('product')
+    entered_product_code = request.args.get('product_code')
+
+    # Check if any filtering criteria are present
+    filtering_criteria_present = start_date or end_date or product_codes or entered_product_code
+
+    # Apply filters if criteria are present
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            sales_query = sales_query.filter(Sale.sale_date >= start_date)
+        except ValueError:
+            flash('Invalid start date format. Please use YYYY-MM-DD.', 'error')
+
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            sales_query = sales_query.filter(Sale.sale_date <= end_date)
+        except ValueError:
+            flash('Invalid end date format. Please use YYYY-MM-DD.', 'error')
+
+    if product_codes:
+        sales_query = sales_query.filter(Product.code.in_(product_codes))
+
+    if entered_product_code:
+        sales_query = sales_query.filter(Product.code == entered_product_code)
+
+    # Retrieve filtered sales results
+    sales = sales_query.all()
+
+    return render_template('sales.html', sales=sales, filtering_criteria_present=filtering_criteria_present)
+
+@bp.route('/make_sale', methods=['GET', 'POST'])
+@login_required
+def make_sale():
+    if request.method == 'POST':
+        customer_name = request.form.get('customer_name')
+        customer_email = request.form.get('customer_email')
+        product_codes = request.form.getlist('product_code[]')
+
+        total_sale_amount = 0
+
+        try:
+            for product_code in product_codes:
+                product = Product.query.filter_by(code=product_code).first_or_404()
+                if product.quantity <= 0:
+                    flash(f'Product {product.name} is out of stock.', 'danger')
+                    return redirect(url_for('routes.make_sale'))
+                sale = Sale(product_code=product_code, quantity_sold=1, sale_date=datetime.now(), user_id=current_user.id)
+                db.session.add(sale)
+                total_sale_amount += product.price
+
+            invoice = Invoice(
+                customer_name=customer_name,
+                customer_email=customer_email,
+                total_amount=total_sale_amount,
+                date_created=datetime.now(),
+                user_id=current_user.id
+            )
+            db.session.add(invoice)
+            db.session.commit()
+
+            for product_code in product_codes:
+                invoice_item = InvoiceItem(product_code=product_code, quantity=1, invoice_id=invoice.id)
+                db.session.add(invoice_item)
+
+                product = Product.query.filter_by(code=product_code).first_or_404()
+                product.quantity -= 1
+
+            db.session.commit()
+            flash('Sale and invoice recorded successfully!', 'success')
+
+            pdf = generate_invoice_pdf(invoice)
+            return redirect(url_for('routes.print_invoice', invoice_id=invoice.id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occurred while processing the sale: {str(e)}', 'danger')
+
+    return render_template('make_sales.html')
+
+@bp.route('/invoices', methods=['GET'])
+@login_required
+def invoices():
+    invoices_query = Invoice.query
+
+    invoice_number = request.args.get('invoice_number')
+    entered_product_code = request.args.get('product_code')
+
+    # Check if any filtering criteria are present
+    filtering_criteria_present = invoice_number or entered_product_code
+
+    if invoice_number:
+        invoices_query = invoices_query.filter(Invoice.id == invoice_number)
+    if entered_product_code:
+        invoices_query = invoices_query.join(InvoiceItem).join(Product).filter(Product.code == entered_product_code)
+
+    invoices = invoices_query.all()
+
+    return render_template('invoice.html', invoices=invoices, filtering_criteria_present=filtering_criteria_present)
