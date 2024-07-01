@@ -1,39 +1,40 @@
-import os
-import csv
-from flask import render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from . import app, db
+from werkzeug.utils import secure_filename
+import os
+from . import db
 from .models import User, Product, Stock
 from .forms import LoginForm, RegistrationForm, UpdateProductForm
-from .utils import extract_non_numeric
+from .utils import extract_non_numeric, generate_tag
+from add_data import add_products_from_csv
+from sqlalchemy.exc import IntegrityError
+from .utils import prefixes
 
-app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
+# Create a Blueprint for routes
+bp = Blueprint('routes', __name__)
 
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
-
-@app.route('/')
+@bp.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/login', methods=['GET', 'POST'])
+@bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(url_for('routes.index'))
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user is None or not user.check_password(form.password.data):
             flash('Invalid username or password', 'error')
-            return redirect(url_for('login'))
+            return redirect(url_for('routes.login'))
         login_user(user)
-        return redirect(url_for('index'))
+        return redirect(url_for('routes.index'))
     return render_template('login.html', form=form)
 
-@app.route('/register', methods=['GET', 'POST'])
+@bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(url_for('routes.index'))
     form = RegistrationForm()
     if form.validate_on_submit():
         user = User(username=form.username.data, email=form.email.data, is_admin=form.is_admin.data)
@@ -41,89 +42,164 @@ def register():
         db.session.add(user)
         db.session.commit()
         flash('Congratulations, you are now a registered user!', 'success')
-        return redirect(url_for('login'))
+        return redirect(url_for('routes.login'))
     return render_template('register.html', form=form)
 
-@app.route('/logout')
+@bp.route('/logout')
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('index'))
+    return redirect(url_for('routes.index'))
 
-@app.route('/add_product', methods=['GET', 'POST'])
+@bp.route('/add_product', methods=['GET', 'POST'])
 @login_required
 def add_product():
     if request.method == 'POST':
-        code = request.form['code']
-        item = request.form['item']
-        category = request.form['category']
-        type_material = request.form['type_material']
-        size = request.form['size']
-        color = request.form['color']
-        description = request.form['description']
-        buying_price = float(request.form['buying_price'])
-        selling_price = float(request.form['selling_price'])
-        quantity = int(request.form['quantity'])
-
+        pre = request.form.get('pre')
+        code = request.form.get('code')
+        item = request.form.get('item')
+        category = request.form.get('category')
+        type_material = request.form.get('type_material')
+        size = request.form.get('size')
+        color = request.form.get('color')
+        description = request.form.get('description')
+        buying_price = request.form.get('buying_price')
+        selling_price = request.form.get('selling_price')
+        quantity = request.form.get('quantity')
+        
+        print(f"pre: {pre}, code: {code}, item: {item}, category: {category}, type_material: {type_material}, size: {size}, color: {color}, description: {description}, buying_price: {buying_price}, selling_price: {selling_price}, quantity: {quantity}")
+        
+        if not pre:
+            return "Error: 'pre' field is required.", 400
+        
+        existing_product = Product.query.filter_by(code=code).first()
+        if existing_product:
+            flash('A product with this code already exists.', 'error')
+            return redirect(url_for('routes.add_product_page'))
+        
         new_product = Product(
-            code=code,
-            item=item,
-            category=category,
-            type_material=type_material,
-            size=size,
-            color=color,
-            description=description,
-            buying_price=buying_price,
-            selling_price=selling_price,
+            pre=pre, 
+            code=code, 
+            item=item, 
+            category=category, 
+            type_material=type_material, 
+            size=size, 
+            color=color, 
+            description=description, 
+            buying_price=buying_price, 
+            selling_price=selling_price, 
             quantity=quantity
         )
+        
         db.session.add(new_product)
-        db.session.commit()
-        update_stock()
-        flash('Product added successfully!', 'success')
-        return redirect(url_for('add_product'))
+        try:
+            db.session.commit()
+            update_stock()
+        except IntegrityError as e:
+            db.session.rollback()
+            flash(f"IntegrityError: {str(e)}", 'error')
+            return redirect(url_for('routes.add_product_page'))
 
+        flash('Product added successfully!', 'success')
+        return redirect(url_for('routes.index'))
+
+    # If GET request, render a template or return a response
     return render_template('add_product.html')
 
-@app.route('/upload_csv', methods=['GET', 'POST'])
+
+@bp.route('/upload_csv', methods=['GET', 'POST'])
 @login_required
 def upload_csv():
     if request.method == 'POST':
         if 'file' not in request.files:
-            flash('No file part', 'danger')
+            flash('No file part', 'error')
             return redirect(request.url)
+        
         file = request.files['file']
+
         if file.filename == '':
-            flash('No selected file', 'danger')
+            flash('No selected file', 'error')
             return redirect(request.url)
-        if file and file.filename.endswith('.csv'):
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
-            bulk_insert_from_csv(filepath)
-            flash('CSV file uploaded and processed successfully!', 'success')
-            return redirect(url_for('upload_csv'))
+
+        if file:
+            try:
+                filename = secure_filename(file.filename)
+                uploads_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'uploads')
+                
+                if not os.path.exists(uploads_dir):
+                    os.makedirs(uploads_dir)
+                
+                file_path = os.path.join(uploads_dir, filename)
+                file.save(file_path)
+                
+                add_products_from_csv(file_path)
+                update_stock()
+                
+                flash('CSV uploaded and processed successfully!', 'success')
+                return redirect(url_for('routes.view_stock'))
+            
+            except Exception as e:
+                flash(f'Failed to process CSV file: {str(e)}', 'error')
+                return redirect(request.url)
 
     return render_template('upload_csv.html')
 
-@app.route('/view_stock')
+@bp.route('/view_stock')
 def view_stock():
-    stock = Stock.query.all()
+    stock = get_stock_items()
 
-    total_pieces = sum(item.pieces for item in stock)
-    total_bp_summation = sum(item.bp_summation for item in stock)
-    total_sp_summation = sum(item.sp_summation for item in stock)
-    total_profit_summation = sum(item.profit_summation for item in stock)
+    grouped_stock = {}
+    total_pieces_per_prefix = {}
+    item_names = {}
 
-    return render_template(
-        'view_stocks.html',
-        stock=stock,
-        total_pieces=total_pieces,
-        total_bp_summation=total_bp_summation,
-        total_sp_summation=total_sp_summation,
-        total_profit_summation=total_profit_summation
-    )
+    for item in stock:
+        prefix = item['product_code'][:3]
+        if prefix not in grouped_stock:
+            grouped_stock[prefix] = []
+            total_pieces_per_prefix[prefix] = 0
+            item_names[prefix] = item['item_name']
+        
+        grouped_stock[prefix].append(item)
+        total_pieces_per_prefix[prefix] += item['pieces']
 
-@app.route('/product_details/<string:code>')
+    total_pieces = sum(total_pieces_per_prefix.values())
+    total_bp_summation = sum(item['bp_summation'] for item in stock)
+    total_sp_summation = sum(item['sp_summation'] for item in stock)
+    total_profit_summation = sum(item['profit_summation'] for item in stock)
+
+    return render_template('view_stocks.html',
+                           grouped_stock=grouped_stock,
+                           total_pieces_per_prefix=total_pieces_per_prefix,
+                           item_names=item_names,
+                           total_pieces=total_pieces,
+                           total_bp_summation=total_bp_summation,
+                           total_sp_summation=total_sp_summation,
+                           total_profit_summation=total_profit_summation)
+
+def get_stock_items():
+    # Join Stock with Product to get item names
+    stock_items = db.session.query(
+        Stock.product_code,
+        Stock.pieces,
+        Stock.bp_summation,
+        Stock.sp_summation,
+        Stock.profit_summation,
+        Product.item.label('item_name')
+    ).join(Product, Stock.product_code == Product.code).all()
+
+    stock_list = []
+    for stock in stock_items:
+        stock_list.append({
+            'product_code': stock.product_code,
+            'pieces': stock.pieces,
+            'bp_summation': stock.bp_summation,
+            'sp_summation': stock.sp_summation,
+            'profit_summation': stock.profit_summation,
+            'item_name': stock.item_name
+        })
+    return stock_list
+
+@bp.route('/product_details/<string:code>')
 def stock_details(code):
     products = Product.query.filter(Product.code.like(code + '%')).all()
 
@@ -132,103 +208,88 @@ def stock_details(code):
 
     return render_template('product_details.html', products=products, product_code=code)
 
-def bulk_insert_from_csv(csv_file_path):
-    with open(csv_file_path, newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            new_product = Product(
-                code=row['code'],
-                item=row['item'],
-                category=row['category'],
-                type_material=row['type_material'],
-                size=row['size'],
-                color=row['color'],
-                description=row['description'],
-                buying_price=float(row['buying_price']),
-                selling_price=float(row['selling_price']),
-                quantity=int(float(row['quantity'].strip()))  # Convert float to int
-            )
-            db.session.add(new_product)
-        db.session.commit()
-    update_stock()
+@bp.route('/search_product', methods=['POST'])
+def search_product():
+    search_term = request.form.get('searchInput')
+    products = Product.query.filter(Product.item.ilike(f'%{search_term}%')).all()
+    return render_template('search_results.html', products=products)
 
-def update_stock():
-    stock_entries = db.session.query(
-        db.func.substr(Product.code, 1, 2).label('product_class'),
-        db.func.sum(Product.buying_price * Product.quantity).label('bp_summation'),
-        db.func.sum(Product.selling_price * Product.quantity).label('sp_summation'),
-        db.func.sum((Product.selling_price - Product.buying_price) * Product.quantity).label('profit_summation'),
-        db.func.sum(Product.quantity).label('pieces')
-    ).group_by(db.func.substr(Product.code, 1, 2)).all()
-
-    db.session.query(Stock).delete()  # Clear existing stock data
-    db.session.commit()
-
-    for entry in stock_entries:
-        product_class = extract_non_numeric(entry.product_class)
-        new_stock = Stock(
-            product_code=product_class,
-            bp_summation=entry.bp_summation,
-            sp_summation=entry.sp_summation,
-            profit_summation=entry.profit_summation,
-            pieces=entry.pieces
-        )
-        db.session.add(new_stock)
-    db.session.commit()
-
-@app.route('/generate_product_code/<string:prefix>', methods=['GET'])
+@bp.route('/generate_product_code/<string:prefix>', methods=['GET'])
 def generate_product_code(prefix):
-    # Get the highest product ID with the same prefix
     highest_id = db.session.query(db.func.max(Product.id)).filter(Product.code.like(f"{prefix}%")).scalar()
     next_id = highest_id + 1 if highest_id else 1
     return jsonify({'code': f"{prefix}{next_id:04d}"})
 
-
-@app.route('/product/delete/<string:code>', methods=['POST'])
+@bp.route('/product/delete/<string:code>', methods=['POST'])
 @login_required
 def delete_product(code):
-    product = Product.query.get_or_404(code)
-
-    try:
-        db.session.delete(product)
-        db.session.commit()
-        update_stock()  # Update stock summations after deletion
-        flash('Product deleted successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting product: {str(e)}', 'danger')
-
-    return redirect(url_for('view_stock'))
-
-@app.route('/product_details/<string:code>')
-def product_details(code):
-    cleaned_code = code.strip().upper() + '%'  # Append '%' for pattern matching
-    products = Product.query.filter(Product.code.like(cleaned_code)).all()  # Use 'like' for pattern matching
-    
-    # Print all products to debug the database content
-    all_products = Product.query.all()
-    print(f"All products in the database: {[p.code for p in all_products]}")
-    
-    if not products:
-        flash(f'No products found for product code {code}', 'danger')
-    print(f"Products for code {code}: {products}")  # Debugging line
-    return render_template('product_details.html', products=products, product_code=code.strip().upper())
-
-@app.route('/product/update/<string:code>', methods=['GET', 'POST'])
-@login_required
-def update_product(code):
-    product = Product.query.get_or_404(code)
-    form = UpdateProductForm(obj=product)  # Create the form with the product object
-
-    if form.validate_on_submit():
-        form.populate_obj(product)  # Update the product with form data
-
+    product = Product.query.filter_by(code=code).first()
+    if product:
         try:
+            db.session.delete(product)
             db.session.commit()
-            flash('Product updated successfully!', 'success')
-            return redirect(url_for('product_details', code=product.code.split('000')[0]))
+            update_stock()
+            flash('Product deleted successfully!', 'success')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error updating product: {str(e)}', 'danger')
+            flash(f'An error occurred while deleting the product: {str(e)}', 'danger')
+    else:
+        flash(f'Product with code {code} not found.', 'danger')
+
+    return redirect(url_for('routes.view_stock'))
+
+@bp.route('/product/update/<string:code>', methods=['GET', 'POST'])
+@login_required
+def update_product(code):
+    product = Product.query.filter_by(code=code).first()
+    if not product:
+        flash(f'Product with code {code} not found.', 'danger')
+        return redirect(url_for('routes.view_stock'))
+        
+    form = UpdateProductForm(obj=product)
+
+    if form.validate_on_submit():
+        try:
+            form.populate_obj(product)
+            db.session.commit()
+            update_stock()
+            flash('Product updated successfully!', 'success')
+            return redirect(url_for('routes.view_stock'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occurred while updating the product: {str(e)}', 'danger')
 
     return render_template('update_product.html', form=form, product=product)
+
+def update_stock():
+    # Clear current stock
+    Stock.query.delete()
+
+    # Aggregate product data
+    products = Product.query.all()
+    stock_data = {}
+    for product in products:
+        if product.code not in stock_data:
+            stock_data[product.code] = {
+                'product_code': product.code,
+                'pieces': 0,
+                'bp_summation': 0,
+                'sp_summation': 0,
+                'profit_summation': 0,
+            }
+        stock_data[product.code]['pieces'] += product.quantity
+        stock_data[product.code]['bp_summation'] += product.buying_price * product.quantity
+        stock_data[product.code]['sp_summation'] += product.selling_price * product.quantity
+        stock_data[product.code]['profit_summation'] += (product.selling_price - product.buying_price) * product.quantity
+
+    # Add stock entries to the database
+    for data in stock_data.values():
+        stock = Stock(
+            product_code=data['product_code'],
+            pieces=data['pieces'],
+            bp_summation=data['bp_summation'],
+            sp_summation=data['sp_summation'],
+            profit_summation=data['profit_summation']
+        )
+        db.session.add(stock)
+    db.session.commit()

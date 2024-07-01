@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}View Products{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col">
+        <h2>Products</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th>Buying Price</th>
+                    <th>Selling Price</th>
+                    <th>Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>{{ product.code }}</td>
+                    <td>{{ product.item }}</td>
+                    <td>{{ product.category }}</td>
+                    <td>{{ product.buying_price }}</td>
+                    <td>{{ product.selling_price }}</td>
+                    <td>{{ product.quantity }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

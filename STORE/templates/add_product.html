@@ -3,17 +3,42 @@
 {% block title %}Add Product{% endblock %}
 
 {% block content %}
+
 <div class="row justify-content-center">
     <div class="col-md-6">
         <h2>Add Product</h2>
         <form method="post">
             <div class="mb-3">
-                <label for="code" class="form-label">Code</label>
-                <input type="text" class="form-control" id="code" name="code" required>
+                <label for="id" class="form-label">ID</label>
+                <input type="number" class="form-control" id="id" name="id" required>
             </div>
             <div class="mb-3">
                 <label for="item" class="form-label">Item</label>
-                <input type="text" class="form-control" id="item" name="item" required>
+                <select class="form-control" id="item" name="item" onchange="updatePrefixOptions()" required>
+                    <option disabled selected>Select Item</option>
+                    <option value="shirt">Shirt</option>
+                    <option value="trouser">Trouser</option>
+                    <option value="tshirt">T-Shirt</option>
+                    <option value="sweater">Sweater</option>
+                    <option value="coat">Coat</option>
+                    <option value="suit">Suit</option>
+                    <option value="tie">Tie</option>
+                    <option value="belt">Belt</option>
+                    <option value="short">Short</option>
+                    <option value="shoes">Shoes</option>
+                    <option value="boxers">Boxers</option>
+                    <option value="vest">Vest</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="pre" class="form-label">Prefix</label>
+                <select class="form-control" id="pre" name="pre" onchange="generateProductCode()" required>
+                    <option disabled selected>Select Prefix</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="code" class="form-label">Code</label>
+                <input type="text" class="form-control" id="code" name="code" readonly required>
             </div>
             <div class="mb-3">
                 <label for="category" class="form-label">Category</label>
@@ -51,4 +76,54 @@
         </form>
     </div>
 </div>
+<script>
+    const prefixes = {
+        'shirt': {'casual': 'SC', 'official': 'SO'},
+        'trouser': {'casual': 'TC', 'official': 'TO'},
+        'tshirt': {'casual': 'TSC', 'official': 'TSO'},
+        'sweater': {'casual': 'SWC', 'official': 'SWO'},
+        'coat': {'casual': 'CC', 'official': 'CO'},
+        'suit': {'casual': 'SUC', 'official': 'SUO'},
+        'tie': 'TIE',
+        'belt': 'BLT',
+        'short': 'SHRT',
+        'shoes': {'casual': 'SHC', 'official': 'SHO'},
+        'boxers': 'BX',
+        'vest': 'VST'
+    };
+
+    function updatePrefixOptions() {
+        const item = document.getElementById('item').value;
+        const prefixSelect = document.getElementById('pre');
+        prefixSelect.innerHTML = ''; // Clear existing options
+
+        if (item in prefixes) {
+            const prefixData = prefixes[item];
+            if (typeof prefixData === 'object') {
+                for (const key in prefixData) {
+                    const option = document.createElement('option');
+                    option.value = prefixData[key];
+                    option.text = `${key.charAt(0).toUpperCase() + key.slice(1)} - ${prefixData[key]}`;
+                    prefixSelect.appendChild(option);
+                }
+            } else {
+                const option = document.createElement('option');
+                option.value = prefixData;
+                option.text = prefixData;
+                prefixSelect.appendChild(option);
+            }
+        }
+    }
+
+    function generateProductCode() {
+        const pre = document.getElementById('pre').value;
+        const id = document.getElementById('id').value;
+        if (pre && id) {
+            document.getElementById('code').value = `${pre}${String(id).padStart(4, '0')}`;
+        }
+    }
+
+    document.getElementById('id').addEventListener('input', generateProductCode);
+    document.getElementById('pre').addEventListener('change', generateProductCode);
+</script>
 {% endblock %}

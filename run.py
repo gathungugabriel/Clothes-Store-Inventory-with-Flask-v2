@@ -1,6 +1,8 @@
-from STORE import app, db
-from STORE.models import User, Product  # Import models from STORE package
+from STORE import create_app, db
+from STORE.models import User, Product
 from flask_migrate import Migrate
+
+app = create_app()
 
 if __name__ == '__main__':
     # Initialize Flask-Migrate
@@ -12,4 +14,3 @@ if __name__ == '__main__':
 
     # Start the Flask development server
     app.run(debug=True)
-

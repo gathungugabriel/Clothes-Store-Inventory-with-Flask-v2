@@ -1,4 +1,6 @@
 from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, BooleanField, FloatField, IntegerField, TextAreaField
+from wtforms.validators import DataRequired, Email, EqualTo, Length
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, FloatField, IntegerField, TextAreaField
 from wtforms.validators import DataRequired, ValidationError, Email, EqualTo
 from .models import User
@@ -6,8 +8,7 @@ from .models import User
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
-    remember_me = BooleanField('Remember Me')
-    submit = SubmitField('Sign In')
+    submit = SubmitField('Login')
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
@@ -28,15 +29,14 @@ class RegistrationForm(FlaskForm):
         user = User.query.filter_by(email=email.data).first()
         if user is not None:
             raise ValidationError('Please use a different email address.')
-
+        
 class UpdateProductForm(FlaskForm):
-    pre = StringField('Prefix', validators=[DataRequired()])
     item = StringField('Item', validators=[DataRequired()])
     category = StringField('Category', validators=[DataRequired()])
-    type_material = StringField('Type Material')
-    size = StringField('Size')
-    color = StringField('Color')
-    description = TextAreaField('Description')
+    type_material = StringField('Type of Material', validators=[DataRequired()])
+    size = StringField('Size', validators=[DataRequired()])
+    color = StringField('Color', validators=[DataRequired()])
+    description = TextAreaField('Description', validators=[DataRequired()])
     buying_price = FloatField('Buying Price', validators=[DataRequired()])
     selling_price = FloatField('Selling Price', validators=[DataRequired()])
     quantity = IntegerField('Quantity', validators=[DataRequired()])

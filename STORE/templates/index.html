@@ -11,12 +11,17 @@ Home - Inventory System
     <hr class="my-4">
     <p>Use the buttons below to navigate through the system.</p>
     {% if current_user.is_authenticated %}
-    <a class="btn btn-primary btn-lg" href="{{ url_for('add_product') }}" role="button">Add Product</a>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('upload_csv') }}" role="button">Upload CSV</a>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('view_stock') }}" role="button">View Stock</a>
+    <form action="{{ url_for('routes.search_product') }}" method="post" class="form-inline my-2 my-lg-0">
+        <input class="form-control mr-sm-2" type="text" placeholder="Search" name="searchInput" aria-label="Search" id="searchInput">
+        <button class="btn btn-outline-success my-2 my-sm-0" type="submit" name="searchButton" id="searchButton">Search</button>
+    </form>
+    <br>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.add_product') }}" role="button" id="addDataButton">Add Product</a>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.upload_csv') }}" role="button">Upload CSV</a>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.view_stock') }}" role="button">View Stock</a>
     {% else %}
-    <a class="btn btn-primary btn-lg" href="{{ url_for('login') }}" role="button">Login</a>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('register') }}" role="button">Register</a>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.login') }}" role="button">Login</a>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.register') }}" role="button">Register</a>
     {% endif %}
 </div>
 {% endblock %}

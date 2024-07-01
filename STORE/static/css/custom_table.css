@@ -61,3 +61,7 @@ tr:nth-child(even) {
 tr:hover {
     background-color: #ddd;
 }
+
+.inner-table {
+    background-color: rgb(214, 209, 182);
+}
