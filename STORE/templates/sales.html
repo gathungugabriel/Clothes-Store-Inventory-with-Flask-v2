@@ -74,15 +74,15 @@
                 </tr>
             </thead>
             <tbody>
-                {% if sales %}
-                    {% for sale in sales %}
+                {% if sales_data %}
+                    {% for sale, product in sales_data %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td>{{ sale.product_code }}</td>
-                        <td>{{ sale.product.item }}</td>
+                        <td>{{ product.code }}</td>
+                        <td>{{ product.item }}</td>
                         <td>{{ sale.quantity_sold }}</td>
-                        <td>KSh {{ sale.product.selling_price }}</td>
-                        <td>KSh {{ sale.quantity_sold * sale.product.selling_price }}</td>
+                        <td>KSh {{ product.selling_price }}</td>
+                        <td>KSh {{ sale.quantity_sold * product.selling_price }}</td>
                         <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
                     </tr>
                     {% endfor %}
@@ -96,7 +96,7 @@
     </div>
 
     <!-- Display total amounts -->
-    {% if sales %}
+    {% if sales_data %}
     <div>
         <h3>Total Amount from Sales:</h3>
         <p>KSh {{ total_sales_amount }}</p>

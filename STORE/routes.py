@@ -107,7 +107,6 @@ def add_product():
     # If GET request, render a template or return a response
     return render_template('add_product.html')
 
-
 @bp.route('/upload_csv', methods=['GET', 'POST'])
 @login_required
 def upload_csv():
@@ -295,46 +294,53 @@ def update_stock():
         db.session.add(stock)
     db.session.commit()
 
-@bp.route('/sales', methods=['GET', 'POST'])
-@login_required
-def sales():
-    # Start with the base query joining Sale with Product
-    sales_query = Sale.query.join(Product)
+@bp.route('/get_product_details/<string:code>')
+def get_product_details(code):
+    product = Product.query.filter_by(code=code).first()
+    if product:
+        return jsonify({'price': product.selling_price})
+    else:
+        return jsonify({'error': 'Product not found'}), 404
 
-    # Extract filtering criteria from request args
+@bp.route('/sales')
+def sales():
+    query = db.session.query(Sale, Product).join(Product, Sale.product_id == Product.id)
+
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     product_codes = request.args.getlist('product')
     entered_product_code = request.args.get('product_code')
 
-    # Check if any filtering criteria are present
-    filtering_criteria_present = start_date or end_date or product_codes or entered_product_code
+    filtering_criteria_present = any([start_date, end_date, product_codes, entered_product_code])
 
-    # Apply filters if criteria are present
     if start_date:
-        try:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            sales_query = sales_query.filter(Sale.sale_date >= start_date)
-        except ValueError:
-            flash('Invalid start date format. Please use YYYY-MM-DD.', 'error')
-
+        query = query.filter(Sale.sale_date >= start_date)
     if end_date:
-        try:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
-            sales_query = sales_query.filter(Sale.sale_date <= end_date)
-        except ValueError:
-            flash('Invalid end date format. Please use YYYY-MM-DD.', 'error')
-
+        query = query.filter(Sale.sale_date <= end_date)
     if product_codes:
-        sales_query = sales_query.filter(Product.code.in_(product_codes))
-
+        query = query.filter(Product.code.in_(product_codes))
     if entered_product_code:
-        sales_query = sales_query.filter(Product.code == entered_product_code)
+        query = query.filter(Product.code.like(f'%{entered_product_code}%'))
 
-    # Retrieve filtered sales results
-    sales = sales_query.all()
+    sales_data = query.all()
 
-    return render_template('sales.html', sales=sales, filtering_criteria_present=filtering_criteria_present)
+    # Calculate total sales amount
+    total_sales_amount = sum(sale.quantity_sold * product.selling_price for sale, product in sales_data)
+
+    # Fetch all products for the filter dropdown
+    all_products = Product.query.all()
+
+    return render_template(
+        'sales.html',
+        sales_data=sales_data,
+        total_sales_amount=total_sales_amount,
+        products=all_products,
+        start_date=start_date,
+        end_date=end_date,
+        product_codes=product_codes,
+        entered_product_code=entered_product_code,
+        filtering_criteria_present=filtering_criteria_present
+    )
 
 @bp.route('/make_sale', methods=['GET', 'POST'])
 @login_required
@@ -344,51 +350,65 @@ def make_sale():
         customer_email = request.form.get('customer_email')
         product_codes = request.form.getlist('product_code[]')
 
+        print(f"Customer Name: {customer_name}")
+        print(f"Customer Email: {customer_email}")
+        print(f"Product Codes: {product_codes}")
+
         total_sale_amount = 0
 
         try:
-            for product_code in product_codes:
-                product = Product.query.filter_by(code=product_code).first_or_404()
-                if product.quantity <= 0:
-                    flash(f'Product {product.name} is out of stock.', 'danger')
-                    return redirect(url_for('routes.make_sale'))
-                sale = Sale(product_code=product_code, quantity_sold=1, sale_date=datetime.now(), user_id=current_user.id)
-                db.session.add(sale)
-                total_sale_amount += product.price
-
+            # Create a new invoice
             invoice = Invoice(
                 customer_name=customer_name,
                 customer_email=customer_email,
-                total_amount=total_sale_amount,
-                date_created=datetime.now(),
-                user_id=current_user.id
+                total_amount=0,  # Will be updated later
+                date_created=datetime.now()
             )
             db.session.add(invoice)
-            db.session.commit()
+            db.session.flush()  # Get the invoice ID before committing
 
+            # Process each product
             for product_code in product_codes:
-                invoice_item = InvoiceItem(product_code=product_code, quantity=1, invoice_id=invoice.id)
+                product = Product.query.filter_by(code=product_code).first()
+                if not product:
+                    flash(f'Product with code {product_code} not found.', 'danger')
+                    return redirect(url_for('routes.make_sale'))
+
+                if product.quantity <= 0:
+                    flash(f'Product {product.item} is out of stock.', 'danger')
+                    return redirect(url_for('routes.make_sale'))
+
+                # Add sale record
+                sale = Sale(product_id=product.id, quantity_sold=1, sale_date=datetime.now())
+                db.session.add(sale)
+
+                # Add invoice item
+                invoice_item = InvoiceItem(product_id=product.id, quantity=1, invoice_id=invoice.id)
                 db.session.add(invoice_item)
 
-                product = Product.query.filter_by(code=product_code).first_or_404()
+                # Update product quantity and total sale amount
                 product.quantity -= 1
+                total_sale_amount += product.selling_price
 
+            # Update invoice total amount
+            invoice.total_amount = total_sale_amount
             db.session.commit()
+            
             flash('Sale and invoice recorded successfully!', 'success')
+            return redirect(url_for('routes.view_stock'))
 
-            pdf = generate_invoice_pdf(invoice)
-            return redirect(url_for('routes.print_invoice', invoice_id=invoice.id))
         except Exception as e:
             db.session.rollback()
             flash(f'An error occurred while processing the sale: {str(e)}', 'danger')
+            print(f"Error: {str(e)}")
 
     return render_template('make_sales.html')
+
 
 @bp.route('/invoices', methods=['GET'])
 @login_required
 def invoices():
-    invoices_query = Invoice.query
-
+    invoices_query = Invoice.query.join(User)
     invoice_number = request.args.get('invoice_number')
     entered_product_code = request.args.get('product_code')
 
@@ -402,4 +422,8 @@ def invoices():
 
     invoices = invoices_query.all()
 
-    return render_template('invoice.html', invoices=invoices, filtering_criteria_present=filtering_criteria_present)
+    return render_template('invoices.html', invoices=invoices, filtering_criteria_present=filtering_criteria_present)
+
+def generate_invoice_pdf(invoice):
+    # Implement the logic to generate a PDF for the invoice
+    pass
