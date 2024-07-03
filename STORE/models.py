@@ -75,7 +75,16 @@ class Stock(db.Model):
 
 class Sale(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)  # Foreign key to product.id
+    product_id = db.Column(db.Integer, nullable=False)  # Store the product ID for reference
+    product_code = db.Column(db.String(20), nullable=False)
+    item = db.Column(db.String(50), nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    type_material = db.Column(db.String(50), nullable=False)
+    size = db.Column(db.String(10), nullable=False)
+    color = db.Column(db.String(20), nullable=False)
+    description = db.Column(db.String(255), nullable=True)
+    buying_price = db.Column(db.Float, nullable=False)
+    selling_price = db.Column(db.Float, nullable=False)
     quantity_sold = db.Column(db.Integer, nullable=False)
     sale_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
@@ -92,7 +101,15 @@ class Invoice(db.Model):
 
 class InvoiceItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)  # Foreign key to product.id
+    product_id = db.Column(db.Integer, nullable=False)
+    product_code = db.Column(db.String(20), nullable=False)
+    item = db.Column(db.String(50), nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    type_material = db.Column(db.String(50), nullable=False)
+    size = db.Column(db.String(10), nullable=False)
+    color = db.Column(db.String(20), nullable=False)
+    description = db.Column(db.String(255), nullable=True)
+    buying_price = db.Column(db.Float, nullable=False)
+    selling_price = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=False)
-    product = db.relationship('Product', backref=db.backref('invoice_items', lazy=True))

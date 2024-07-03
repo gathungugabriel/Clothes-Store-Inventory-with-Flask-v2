@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify,send_file
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 import os
@@ -10,6 +10,10 @@ from add_data import add_products_from_csv
 from sqlalchemy.exc import IntegrityError
 from .utils import prefixes
 from datetime import datetime
+import io
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
 
 # Create a Blueprint for routes
 bp = Blueprint('routes', __name__)
@@ -302,9 +306,10 @@ def get_product_details(code):
     else:
         return jsonify({'error': 'Product not found'}), 404
 
-@bp.route('/sales')
+@bp.route('/sales', methods=['GET', 'POST'])
+@login_required
 def sales():
-    query = db.session.query(Sale, Product).join(Product, Sale.product_id == Product.id)
+    query = db.session.query(Sale)
 
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
@@ -318,23 +323,19 @@ def sales():
     if end_date:
         query = query.filter(Sale.sale_date <= end_date)
     if product_codes:
-        query = query.filter(Product.code.in_(product_codes))
+        query = query.filter(Sale.product_code.in_(product_codes))
     if entered_product_code:
-        query = query.filter(Product.code.like(f'%{entered_product_code}%'))
+        query = query.filter(Sale.product_code.like(f'%{entered_product_code}%'))
 
     sales_data = query.all()
 
     # Calculate total sales amount
-    total_sales_amount = sum(sale.quantity_sold * product.selling_price for sale, product in sales_data)
-
-    # Fetch all products for the filter dropdown
-    all_products = Product.query.all()
+    total_sales_amount = sum(sale.quantity_sold * sale.selling_price for sale in sales_data)
 
     return render_template(
         'sales.html',
         sales_data=sales_data,
         total_sales_amount=total_sales_amount,
-        products=all_products,
         start_date=start_date,
         end_date=end_date,
         product_codes=product_codes,
@@ -342,16 +343,19 @@ def sales():
         filtering_criteria_present=filtering_criteria_present
     )
 
+
 @bp.route('/make_sale', methods=['GET', 'POST'])
 @login_required
 def make_sale():
     if request.method == 'POST':
         customer_name = request.form.get('customer_name')
         customer_email = request.form.get('customer_email')
+        phone_number = request.form.get('phone_number')
         product_codes = request.form.getlist('product_code[]')
 
         print(f"Customer Name: {customer_name}")
         print(f"Customer Email: {customer_email}")
+        print(f"Phone Number: {phone_number}")
         print(f"Product Codes: {product_codes}")
 
         total_sale_amount = 0
@@ -361,6 +365,7 @@ def make_sale():
             invoice = Invoice(
                 customer_name=customer_name,
                 customer_email=customer_email,
+                phone_number=phone_number,
                 total_amount=0,  # Will be updated later
                 date_created=datetime.now()
             )
@@ -379,23 +384,53 @@ def make_sale():
                     return redirect(url_for('routes.make_sale'))
 
                 # Add sale record
-                sale = Sale(product_id=product.id, quantity_sold=1, sale_date=datetime.now())
+                sale = Sale(
+                    product_id=product.id,
+                    product_code=product.code,
+                    item=product.item,
+                    category=product.category,
+                    type_material=product.type_material,
+                    size=product.size,
+                    color=product.color,
+                    description=product.description,
+                    buying_price=product.buying_price,
+                    selling_price=product.selling_price,
+                    quantity_sold=1,
+                    sale_date=datetime.now()
+                )
                 db.session.add(sale)
 
                 # Add invoice item
-                invoice_item = InvoiceItem(product_id=product.id, quantity=1, invoice_id=invoice.id)
+                invoice_item = InvoiceItem(
+                    product_id=product.id,
+                    product_code=product.code,
+                    item=product.item,
+                    category=product.category,
+                    type_material=product.type_material,
+                    size=product.size,
+                    color=product.color,
+                    description=product.description,
+                    buying_price=product.buying_price,
+                    selling_price=product.selling_price,
+                    quantity=1,
+                    invoice_id=invoice.id
+                )
                 db.session.add(invoice_item)
 
                 # Update product quantity and total sale amount
                 product.quantity -= 1
                 total_sale_amount += product.selling_price
 
+                # Remove product if quantity is zero
+                if product.quantity == 0:
+                    db.session.delete(product)
+            
             # Update invoice total amount
             invoice.total_amount = total_sale_amount
             db.session.commit()
             
             flash('Sale and invoice recorded successfully!', 'success')
-            return redirect(url_for('routes.view_stock'))
+            return redirect(url_for('routes.print_invoice', invoice_id=invoice.id))
 
         except Exception as e:
             db.session.rollback()
@@ -408,7 +443,8 @@ def make_sale():
 @bp.route('/invoices', methods=['GET'])
 @login_required
 def invoices():
-    invoices_query = Invoice.query.join(User)
+    invoices_query = Invoice.query
+
     invoice_number = request.args.get('invoice_number')
     entered_product_code = request.args.get('product_code')
 
@@ -418,12 +454,36 @@ def invoices():
     if invoice_number:
         invoices_query = invoices_query.filter(Invoice.id == invoice_number)
     if entered_product_code:
-        invoices_query = invoices_query.join(InvoiceItem).join(Product).filter(Product.code == entered_product_code)
+        invoices_query = invoices_query.join(InvoiceItem).filter(InvoiceItem.product_code == entered_product_code)
 
     invoices = invoices_query.all()
 
-    return render_template('invoices.html', invoices=invoices, filtering_criteria_present=filtering_criteria_present)
+    return render_template('invoice.html', invoices=invoices, filtering_criteria_present=filtering_criteria_present)
 
-def generate_invoice_pdf(invoice):
-    # Implement the logic to generate a PDF for the invoice
-    pass
+
+
+@bp.route('/print_invoice/<int:invoice_id>', methods=['GET'])
+@login_required
+def print_invoice(invoice_id):
+    invoice = Invoice.query.get_or_404(invoice_id)
+    buffer = io.BytesIO()
+
+    # Create the PDF object, using the buffer as its "file."
+    p = canvas.Canvas(buffer, pagesize=letter)
+    p.drawString(100, 750, f"Invoice ID: {invoice.id}")
+    p.drawString(100, 735, f"Customer Name: {invoice.customer_name}")
+    p.drawString(100, 720, f"Customer Email: {invoice.customer_email}")
+    p.drawString(100, 705, f"Phone Number: {invoice.phone_number}")
+    p.drawString(100, 690, f"Date Created: {invoice.date_created}")
+    p.drawString(100, 675, f"Total Amount: {invoice.total_amount}")
+
+    y = 650
+    for item in invoice.items:
+        p.drawString(100, y, f"Product Code: {item.product_code}, Item: {item.item}, Quantity: {item.quantity}")
+        y -= 15
+
+    p.showPage()
+    p.save()
+
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name=f'invoice_{invoice.id}.pdf', mimetype='application/pdf')
