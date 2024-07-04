@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}
+Search Results
+{% endblock %}
+
+{% block content %}
+<h2>Search Results</h2>
+{% if results %}
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Item</th>
+                <th>Category</th>
+                <th>Type Material</th>
+                <th>Size</th>
+                <th>Color</th>
+                <th>Description</th>
+                <th>Buying Price</th>
+                <th>Selling Price</th>
+                <th>Quantity</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in results %}
+                <tr>
+                    <td>{{ result.product.code }}</td>
+                    <td>{{ result.product.item }}</td>
+                    <td>{{ result.product.category }}</td>
+                    <td>{{ result.product.type_material }}</td>
+                    <td>{{ result.product.size }}</td>
+                    <td>{{ result.product.color }}</td>
+                    <td>{{ result.product.description }}</td>
+                    <td>{{ result.product.buying_price }}</td>
+                    <td>{{ result.product.selling_price }}</td>
+                    <td>{{ result.product.quantity }}</td>
+                    <td>{{ result.status }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No products found matching the search criteria.</p>
+{% endif %}
+{% endblock %}

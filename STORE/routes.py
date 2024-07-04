@@ -1,18 +1,18 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify,send_file
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 import os
 from . import db
 from .models import User, Product, Stock, Sale, Invoice, InvoiceItem
 from .forms import LoginForm, RegistrationForm, UpdateProductForm
-from .utils import extract_non_numeric, generate_tag
+from .utils import extract_non_numeric, generate_tag, prefixes
 from add_data import add_products_from_csv
 from sqlalchemy.exc import IntegrityError
-from .utils import prefixes
 from datetime import datetime
 import io
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from sqlalchemy import or_
 
 
 # Create a Blueprint for routes
@@ -80,7 +80,7 @@ def add_product():
         existing_product = Product.query.filter_by(code=code).first()
         if existing_product:
             flash('A product with this code already exists.', 'error')
-            return redirect(url_for('routes.add_product_page'))
+            return redirect(url_for('routes.add_product'))
         
         new_product = Product(
             pre=pre, 
@@ -103,7 +103,7 @@ def add_product():
         except IntegrityError as e:
             db.session.rollback()
             flash(f"IntegrityError: {str(e)}", 'error')
-            return redirect(url_for('routes.add_product_page'))
+            return redirect(url_for('routes.add_product'))
 
         flash('Product added successfully!', 'success')
         return redirect(url_for('routes.index'))
@@ -212,11 +212,100 @@ def stock_details(code):
 
     return render_template('product_details.html', products=products, product_code=code)
 
+from sqlalchemy import or_
+
 @bp.route('/search_product', methods=['POST'])
 def search_product():
-    search_term = request.form.get('searchInput')
-    products = Product.query.filter(Product.item.ilike(f'%{search_term}%')).all()
-    return render_template('search_results.html', products=products)
+    search_query = request.form.get('search')
+    if search_query:
+        search_filter = f"%{search_query}%"
+        products = Product.query.filter(
+            or_(
+                Product.code.ilike(search_filter),
+                Product.item.ilike(search_filter),
+                Product.category.ilike(search_filter),
+                Product.type_material.ilike(search_filter),
+                Product.size.ilike(search_filter),
+                Product.color.ilike(search_filter),
+                Product.description.ilike(search_filter)
+            )
+        ).all()
+
+        if products:
+            results = []
+            for product in products:
+                status = 'In Stock'
+                if Sale.query.filter_by(product_id=product.id).first():
+                    status = 'Sold'
+                results.append({
+                    'product': product,
+                    'status': status
+                })
+            return render_template('search_results.html', results=results)
+
+    flash('No product found matching the search criteria.', 'danger')
+    return redirect(url_for('routes.view_stock'))
+
+
+
+@bp.route('/filter_products', methods=['POST'])
+def filter_products():
+    data = request.get_json()
+    search_term = data.get('search_term', '').lower()
+
+    search_filter = f"%{search_term}%"
+    products = Product.query.filter(
+        or_(
+            Product.code.ilike(search_filter),
+            Product.item.ilike(search_filter),
+            Product.category.ilike(search_filter),
+            Product.type_material.ilike(search_filter),
+            Product.size.ilike(search_filter),
+            Product.color.ilike(search_filter),
+            Product.description.ilike(search_filter)
+        )
+    ).all()
+
+    products_list = [{
+        'code': product.code,
+        'item': product.item,
+        'category': product.category,
+        'buying_price': product.buying_price,
+        'selling_price': product.selling_price,
+        'quantity': product.quantity
+    } for product in products]
+
+    return jsonify({'products': products_list})
+
+
+@bp.route('/_product_code/<string:prefix>')
+def _product_code(prefix):
+    if prefix in prefixes:
+        try:
+            new_code = generate_tag(prefix)
+            return jsonify({'code': new_code})
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+    return jsonify({'error': 'Invalid prefix'}), 400
+
+@bp.route('/print_stock_pdf')
+@login_required
+def print_stock_pdf():
+    stock = get_stock_items()
+
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=letter)
+    pdf.setTitle("Stock Report")
+
+    pdf.drawString(30, 750, 'Stock Report')
+    y = 720
+    for item in stock:
+        pdf.drawString(30, y, f"{item['product_code']} - {item['item_name']}: {item['pieces']} pieces, Buying Price: {item['bp_summation']}, Selling Price: {item['sp_summation']}, Profit: {item['profit_summation']}")
+        y -= 20
+
+    pdf.save()
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name='stock_report.pdf', mimetype='application/pdf')
 
 @bp.route('/generate_product_code/<string:prefix>', methods=['GET'])
 def generate_product_code(prefix):

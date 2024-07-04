@@ -12,8 +12,8 @@ Home - Inventory System
     <p>Use the buttons below to navigate through the system.</p>
     {% if current_user.is_authenticated %}
     <form action="{{ url_for('routes.search_product') }}" method="post" class="form-inline my-2 my-lg-0">
-        <input class="form-control mr-sm-2" type="text" placeholder="Search" name="searchInput" aria-label="Search" id="searchInput">
-        <button class="btn btn-outline-success my-2 my-sm-0" type="submit" name="searchButton" id="searchButton">Search</button>
+        <input class="form-control mr-sm-2" type="text" placeholder="Search" name="search" aria-label="Search" id="searchInput">
+        <button class="btn btn-outline-success my-2 my-sm-0" type="submit" id="searchButton">Search</button>
     </form>
     <br>
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.add_product') }}" role="button" id="addDataButton">Add Product</a>
@@ -22,6 +22,7 @@ Home - Inventory System
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.make_sale') }}" role="button">Make Sale</a>
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.sales') }}" role="button">Sales</a>
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.invoices') }}" role="button">Invoices</a>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.print_stock_pdf') }}" role="button">Print Stock Report</a>
     {% else %}
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.login') }}" role="button">Login</a>
     <a class="btn btn-primary btn-lg" href="{{ url_for('routes.register') }}" role="button">Register</a>
