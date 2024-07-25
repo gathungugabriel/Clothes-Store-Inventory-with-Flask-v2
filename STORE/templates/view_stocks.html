@@ -3,47 +3,64 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Stock List</h2>
-    <table >
+    <table class="table table-bordered">
         <thead>
             <tr>
-                <th>Product Code</th>
                 <th>Item</th>
+                <th>Category</th>
                 <th>Total Pieces</th>
+                <th>Total Buying Price</th>
+                <th>Total Selling Price</th>
+                <th>Total Profit</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
-            {% for prefix, items in grouped_stock.items() %}
+            {% for pre, items in grouped_stock.items() %}
             <tr class="table-active">
-                <td>{{ prefix }}</td>
-                <td>{{ item_names[prefix] }}</td>
-                <td>{{ total_pieces_per_prefix[prefix] }}</td>
+                <td>{{ items[0].item_name }}</td>
+                <td>{{ items[0].category }}</td>
+                <td>{{ total_pieces_per_pre[pre] }}</td>
+                <td>{{ total_bp_summation_per_pre[pre] }}</td>
+                <td>{{ total_sp_summation_per_pre[pre] }}</td>
+                <td>{{ total_profit_summation_per_pre[pre] }}</td>
                 <td>
-                    <button class="btn btn-sm btn-primary" onclick="toggleDetails('{{ prefix }}')">Expand</button>
+                    <button class="btn btn-sm btn-primary" onclick="toggleDetails('{{ pre }}')">Expand</button>
                 </td>
             </tr>
-            <tbody id="{{ prefix }}" style="display:none;" class="inner-table">
+            <tbody id="{{ pre }}" style="display:none;" class="inner-table">
                 <tr>
                     <th>Product Code</th>
                     <th>Item</th>
-                    <th>Buying Price Summation</th>
-                    <th>Selling Price Summation</th>
-                    <th>Profit Summation</th>
+                    <th>Category</th>
+                    <th>Type Material</th>
+                    <th>Size</th>
+                    <th>Color</th>
+                    <th>Description</th>
+                    <th>Buying Price</th>
+                    <th>Selling Price</th>
+                    <th>Profit</th>
+                    <th>Quantity</th>
                     <th>Actions</th>
                 </tr>
                 {% for item in items %}
                 <tr>
                     <td>{{ item.product_code }}</td>
                     <td>{{ item.item_name }}</td>
-                    
-                    <td>{{ item.bp_summation }}</td>
-                    <td>{{ item.sp_summation }}</td>
-                    <td>{{ item.profit_summation }}</td>
+                    <td>{{ item.category }}</td>
+                    <td>{{ item.type_material }}</td>
+                    <td>{{ item.size }}</td>
+                    <td>{{ item.color }}</td>
+                    <td>{{ item.description }}</td>
+                    <td>{{ item.buying_price }}</td>
+                    <td>{{ item.selling_price }}</td>
+                    <td>{{ item.profit }}</td>
+                    <td>{{ item.quantity }}</td>
                     <td>
+                        <a href="{{ url_for('routes.update_product', code=item.product_code) }}" class="btn btn-warning btn-sm">Update</a>
                         <form action="{{ url_for('routes.delete_product', code=item.product_code) }}" method="post" style="display:inline;">
-                            <button type="submit" class="btn btn-danger">Delete</button>
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                         </form>
-                        <a href="{{ url_for('routes.update_product', code=item.product_code) }}" class="btn btn-warning">Update</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -60,8 +77,8 @@
 </div>
 
 <script>
-function toggleDetails(prefix) {
-    var tbody = document.getElementById(prefix);
+function toggleDetails(pre) {
+    var tbody = document.getElementById(pre);
     if (tbody.style.display === "none") {
         tbody.style.display = "table-row-group";
     } else {

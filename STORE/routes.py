@@ -1,7 +1,8 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 import os
+from functools import wraps  
 from . import db
 from .models import User, Product, Stock, Sale, Invoice, InvoiceItem
 from .forms import LoginForm, RegistrationForm, UpdateProductForm
@@ -13,42 +14,121 @@ import io
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from sqlalchemy import or_
+import csv
+from flask import make_response
+
+# Create a Blueprint for routes
+bp = Blueprint('routes', __name__)
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin():
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 # Create a Blueprint for routes
 bp = Blueprint('routes', __name__)
 
 @bp.route('/')
-def index():
-    return render_template('index.html')
+def initial():
+    if current_user.is_authenticated:
+        return redirect(url_for('routes.index'))
+    return render_template('initial.html')
 
+@bp.route('/index')
+@login_required
+def index():
+    products = Product.query.all()
+
+    grouped_stock = {}
+    total_pieces_per_pre = {}
+    total_bp_summation_per_pre = {}
+    total_sp_summation_per_pre = {}
+    total_profit_summation_per_pre = {}
+    total_pieces = 0
+    total_bp_summation = 0
+    total_sp_summation = 0
+    total_profit_summation = 0
+
+    for product in products:
+        pre = product.pre
+
+        if pre not in grouped_stock:
+            grouped_stock[pre] = []
+            total_pieces_per_pre[pre] = 0
+            total_bp_summation_per_pre[pre] = 0
+            total_sp_summation_per_pre[pre] = 0
+            total_profit_summation_per_pre[pre] = 0
+
+        grouped_stock[pre].append({
+            'product_code': product.code,
+            'item_name': product.item,
+            'category': product.category,
+            'type_material': product.type_material,
+            'size': product.size,
+            'color': product.color,
+            'description': product.description,
+            'buying_price': product.buying_price,
+            'selling_price': product.selling_price,
+            'profit': product.selling_price - product.buying_price,
+            'quantity': product.quantity
+        })
+
+        total_bp_summation_per_pre[pre] += product.buying_price * product.quantity
+        total_sp_summation_per_pre[pre] += product.selling_price * product.quantity
+        total_profit_summation_per_pre[pre] += (product.selling_price - product.buying_price) * product.quantity
+        total_pieces_per_pre[pre] += product.quantity
+
+    total_bp_summation = sum(total_bp_summation_per_pre.values())
+    total_sp_summation = sum(total_sp_summation_per_pre.values())
+    total_profit_summation = sum(total_profit_summation_per_pre.values())
+    total_pieces = sum(total_pieces_per_pre.values())
+
+    return render_template('index.html', grouped_stock=grouped_stock,
+                           total_pieces_per_pre=total_pieces_per_pre, total_pieces=total_pieces,
+                           total_bp_summation=total_bp_summation, total_sp_summation=total_sp_summation,
+                           total_profit_summation=total_profit_summation,
+                           total_bp_summation_per_pre=total_bp_summation_per_pre,
+                           total_sp_summation_per_pre=total_sp_summation_per_pre,
+                           total_profit_summation_per_pre=total_profit_summation_per_pre)
+
+    
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('routes.index'))
+        return redirect(url_for('auth.index'))  # Replace with the correct endpoint name
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user is None or not user.check_password(form.password.data):
             flash('Invalid username or password', 'error')
-            return redirect(url_for('routes.login'))
+            return redirect(url_for('auth.login'))
         login_user(user)
         return redirect(url_for('routes.index'))
     return render_template('login.html', form=form)
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('routes.index'))
     form = RegistrationForm()
     if form.validate_on_submit():
-        user = User(username=form.username.data, email=form.email.data, is_admin=form.is_admin.data)
+        user = User(username=form.username.data, email=form.email.data)
         user.set_password(form.password.data)
-        db.session.add(user)
-        db.session.commit()
-        flash('Congratulations, you are now a registered user!', 'success')
-        return redirect(url_for('routes.login'))
-    return render_template('register.html', form=form)
+        user.role = 'admin' if form.is_admin.data else 'attendant'
+        
+        # Ensure username and email are unique
+        if User.query.filter_by(username=form.username.data).first():
+            flash('Username already exists. Please choose another.', 'danger')
+        elif User.query.filter_by(email=form.email.data).first():
+            flash('Email already exists. Please choose another.', 'danger')
+        else:
+            db.session.add(user)
+            db.session.commit()
+            flash('Congratulations, you are now a registered user!', 'success')
+            return redirect(url_for('routes.login'))  # Use 'routes' as the blueprint name
+    return render_template('register.html', title='Register', form=form)
 
 @bp.route('/logout')
 @login_required
@@ -56,8 +136,76 @@ def logout():
     logout_user()
     return redirect(url_for('routes.index'))
 
+@bp.route('/users')
+@login_required
+def manage_users():
+    print(f"Current user: {current_user.username}, Role: {current_user.role}")
+    if not current_user.is_admin():
+        flash('You do not have permission to view this page.', 'danger')
+        return redirect(url_for('routes.index'))
+    users = User.query.all()
+    return render_template('manage_users.html', users=users)
+
+
+@bp.route('/user/create', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_user():
+    if not current_user.is_admin():
+        flash('You do not have permission to perform this action.', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        role = request.form.get('role')
+
+        # Validate the form data
+        if not username or not email or not password or not role:
+            flash('All fields are required.', 'danger')
+            return redirect(url_for('create_user'))
+
+        # Check if the username or email already exists
+        existing_user = User.query.filter((User.username == username) | (User.email == email)).first()
+        if existing_user:
+            flash('Username or email already exists.', 'danger')
+            return redirect(url_for('create_user'))
+
+        # Create the new user
+        new_user = User(username=username, email=email, role=role)
+        new_user.set_password(password)
+
+        # Add the user to the database
+        db.session.add(new_user)
+        db.session.commit()
+
+        flash('User created successfully.', 'success')
+        return redirect(url_for('manage_users'))
+
+    return render_template('create_user.html')
+
+@bp.route('/user/delete/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_user(user_id):
+    if not current_user.is_admin():
+        flash('You do not have permission to perform this action.', 'danger')
+        return redirect(url_for('index'))
+
+    user = User.query.get(user_id)
+    if user:
+        db.session.delete(user)
+        db.session.commit()
+        flash('User deleted successfully.', 'success')
+    else:
+        flash('User not found.', 'danger')
+
+    return redirect(url_for('manage_users'))
+
 @bp.route('/add_product', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def add_product():
     if request.method == 'POST':
         pre = request.form.get('pre')
@@ -113,6 +261,7 @@ def add_product():
 
 @bp.route('/upload_csv', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def upload_csv():
     if request.method == 'POST':
         if 'file' not in request.files:
@@ -148,37 +297,65 @@ def upload_csv():
 
     return render_template('upload_csv.html')
 
-@bp.route('/view_stock')
-def view_stock():
-    stock = get_stock_items()
+@bp.route('/view_stocks')
+def view_stocks():
+    # Query all products and group by 'pre'
+    products = Product.query.all()
 
+    # Initialize data structures for grouped stock information
     grouped_stock = {}
-    total_pieces_per_prefix = {}
-    item_names = {}
+    total_pieces_per_pre = {}
+    total_bp_summation_per_pre = {}
+    total_sp_summation_per_pre = {}
+    total_profit_summation_per_pre = {}
+    total_pieces = 0
+    total_bp_summation = 0
+    total_sp_summation = 0
+    total_profit_summation = 0
 
-    for item in stock:
-        prefix = item['product_code'][:2]
-        if prefix not in grouped_stock:
-            grouped_stock[prefix] = []
-            total_pieces_per_prefix[prefix] = 0
-            item_names[prefix] = item['item_name']
-        
-        grouped_stock[prefix].append(item)
-        total_pieces_per_prefix[prefix] += item['pieces']
+    # Process each product
+    for product in products:
+        pre = product.pre
 
-    total_pieces = sum(total_pieces_per_prefix.values())
-    total_bp_summation = sum(item['bp_summation'] for item in stock)
-    total_sp_summation = sum(item['sp_summation'] for item in stock)
-    total_profit_summation = sum(item['profit_summation'] for item in stock)
+        if pre not in grouped_stock:
+            grouped_stock[pre] = []
+            total_pieces_per_pre[pre] = 0
+            total_bp_summation_per_pre[pre] = 0
+            total_sp_summation_per_pre[pre] = 0
+            total_profit_summation_per_pre[pre] = 0
 
-    return render_template('view_stocks.html',
-                           grouped_stock=grouped_stock,
-                           total_pieces_per_prefix=total_pieces_per_prefix,
-                           item_names=item_names,
-                           total_pieces=total_pieces,
-                           total_bp_summation=total_bp_summation,
-                           total_sp_summation=total_sp_summation,
-                           total_profit_summation=total_profit_summation)
+        grouped_stock[pre].append({
+            'product_code': product.code,
+            'item_name': product.item,
+            'category': product.category,
+            'type_material': product.type_material,
+            'size': product.size,
+            'color': product.color,
+            'description': product.description,
+            'buying_price': product.buying_price,
+            'selling_price': product.selling_price,
+            'profit': product.selling_price - product.buying_price,
+            'quantity': product.quantity
+        })
+
+        total_bp_summation_per_pre[pre] += product.buying_price * product.quantity
+        total_sp_summation_per_pre[pre] += product.selling_price * product.quantity
+        total_profit_summation_per_pre[pre] += (product.selling_price - product.buying_price) * product.quantity
+        total_pieces_per_pre[pre] += product.quantity
+
+    total_bp_summation = sum(total_bp_summation_per_pre.values())
+    total_sp_summation = sum(total_sp_summation_per_pre.values())
+    total_profit_summation = sum(total_profit_summation_per_pre.values())
+    total_pieces = sum(total_pieces_per_pre.values())
+
+    return render_template('view_stocks.html', grouped_stock=grouped_stock,
+                           total_pieces_per_pre=total_pieces_per_pre, total_pieces=total_pieces,
+                           total_bp_summation=total_bp_summation, total_sp_summation=total_sp_summation,
+                           total_profit_summation=total_profit_summation,
+                           total_bp_summation_per_pre=total_bp_summation_per_pre,
+                           total_sp_summation_per_pre=total_sp_summation_per_pre,
+                           total_profit_summation_per_pre=total_profit_summation_per_pre)
+
 
 def get_stock_items():
     # Join Stock with Product to get item names
@@ -288,9 +465,22 @@ def _product_code(prefix):
             return jsonify({'error': str(e)}), 400
     return jsonify({'error': 'Invalid prefix'}), 400
 
-@bp.route('/print_stock_pdf')
+
+@bp.route('/stock_report', methods=['GET', 'POST'])
 @login_required
-def print_stock_pdf():
+def stock_report():
+    filtered_stock = get_stock_items()
+
+    if request.method == 'POST':
+        search_term = request.form.get('search_term')
+        if search_term:
+            filtered_stock = [item for item in filtered_stock if search_term.lower() in item['product_code'].lower() or search_term.lower() in item['item_name'].lower()]
+
+    return render_template('stock_report.html', stock=filtered_stock)
+
+@bp.route('/download_stock_pdf')
+@login_required
+def download_stock_pdf():
     stock = get_stock_items()
 
     buffer = io.BytesIO()
@@ -299,13 +489,87 @@ def print_stock_pdf():
 
     pdf.drawString(30, 750, 'Stock Report')
     y = 720
+
+    total_buying_price = 0
+    total_selling_price = 0
+    total_quantity = 0
+
+    pdf.drawString(30, y, 'ID | PRE | Code | Item | Category | Type Material | Size | Color | Description | Buying Price | Selling Price | Quantity')
+    y -= 20
+
     for item in stock:
-        pdf.drawString(30, y, f"{item['product_code']} - {item['item_name']}: {item['pieces']} pieces, Buying Price: {item['bp_summation']}, Selling Price: {item['sp_summation']}, Profit: {item['profit_summation']}")
+        pdf.drawString(30, y, f"{item['id']} | {item['pre']} | {item['product_code']} | {item['item_name']} | {item['category']} | {item['type_material']} | {item['size']} | {item['color']} | {item['description']} | {item['buying_price']} | {item['selling_price']} | {item['quantity']}")
+        total_buying_price += item['buying_price']
+        total_selling_price += item['selling_price']
+        total_quantity += item['quantity']
         y -= 20
+
+    y -= 20
+    pdf.drawString(30, y, f"Totals: | | | | | | | | | {total_buying_price} | {total_selling_price} | {total_quantity}")
 
     pdf.save()
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name='stock_report.pdf', mimetype='application/pdf')
+
+@bp.route('/download_stock_csv')
+@login_required
+def download_stock_csv():
+    stock = get_stock_items()
+
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['ID', 'PRE', 'Code', 'Item', 'Category', 'Type Material', 'Size', 'Color', 'Description', 'Buying Price', 'Selling Price', 'Quantity'])
+
+    total_buying_price = 0
+    total_selling_price = 0
+    total_quantity = 0
+
+    for item in stock:
+        cw.writerow([item['id'], item['pre'], item['product_code'], item['item_name'], item['category'], item['type_material'], item['size'], item['color'], item['description'], item['buying_price'], item['selling_price'], item['quantity']])
+        total_buying_price += item['buying_price']
+        total_selling_price += item['selling_price']
+        total_quantity += item['quantity']
+
+    cw.writerow(['Totals', '', '', '', '', '', '', '', '', total_buying_price, total_selling_price, total_quantity])
+
+    response = make_response(si.getvalue())
+    response.headers['Content-Disposition'] = 'attachment; filename=stock_report.csv'
+    response.headers['Content-type'] = 'text/csv'
+    return response
+
+def get_stock_items():
+    stock_items = db.session.query(
+        Stock.id,
+        Product.pre,
+        Stock.product_code,
+        Stock.pieces.label('quantity'),
+        Stock.bp_summation.label('buying_price'),
+        Stock.sp_summation.label('selling_price'),
+        Product.item.label('item_name'),
+        Product.category,
+        Product.type_material,
+        Product.size,
+        Product.color,
+        Product.description
+    ).join(Product, Stock.product_code == Product.code).all()
+
+    stock_list = []
+    for stock in stock_items:
+        stock_list.append({
+            'id': stock.id,
+            'pre': stock.pre,
+            'product_code': stock.product_code,
+            'quantity': stock.quantity,
+            'buying_price': stock.buying_price,
+            'selling_price': stock.selling_price,
+            'item_name': stock.item_name,
+            'category': stock.category,
+            'type_material': stock.type_material,
+            'size': stock.size,
+            'color': stock.color,
+            'description': stock.description
+        })
+    return stock_list
 
 @bp.route('/generate_product_code/<string:prefix>', methods=['GET'])
 def generate_product_code(prefix):
@@ -315,6 +579,7 @@ def generate_product_code(prefix):
 
 @bp.route('/product/delete/<string:code>', methods=['POST'])
 @login_required
+@admin_required
 def delete_product(code):
     product = Product.query.filter_by(code=code).first()
     if product:
@@ -333,6 +598,7 @@ def delete_product(code):
 
 @bp.route('/product/update/<string:code>', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def update_product(code):
     product = Product.query.filter_by(code=code).first()
     if not product:

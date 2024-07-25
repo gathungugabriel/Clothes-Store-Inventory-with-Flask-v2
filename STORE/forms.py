@@ -1,8 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, FloatField, IntegerField, TextAreaField
-from wtforms.validators import DataRequired, Email, EqualTo, Length
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, FloatField, IntegerField, TextAreaField
-from wtforms.validators import DataRequired, ValidationError, Email, EqualTo
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, FloatField, IntegerField, TextAreaField, SelectField
+from wtforms.validators import DataRequired, Email, EqualTo, ValidationError
 from .models import User
 
 class LoginForm(FlaskForm):
@@ -22,14 +20,14 @@ class RegistrationForm(FlaskForm):
 
     def validate_username(self, username):
         user = User.query.filter_by(username=username.data).first()
-        if user is not None:
+        if user:
             raise ValidationError('Please use a different username.')
 
     def validate_email(self, email):
         user = User.query.filter_by(email=email.data).first()
-        if user is not None:
+        if user:
             raise ValidationError('Please use a different email address.')
-        
+
 class UpdateProductForm(FlaskForm):
     item = StringField('Item', validators=[DataRequired()])
     category = StringField('Category', validators=[DataRequired()])
@@ -40,3 +38,8 @@ class UpdateProductForm(FlaskForm):
     buying_price = FloatField('Buying Price', validators=[DataRequired()])
     selling_price = FloatField('Selling Price', validators=[DataRequired()])
     quantity = IntegerField('Quantity', validators=[DataRequired()])
+    submit = SubmitField('Update Product')
+
+class UserRoleForm(FlaskForm):
+    role = SelectField('Role', choices=[('admin', 'Admin'), ('attendant', 'Attendant')], validators=[DataRequired()])
+    submit = SubmitField('Update Role')

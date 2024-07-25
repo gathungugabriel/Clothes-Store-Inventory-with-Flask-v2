@@ -5,27 +5,122 @@ Home - Inventory System
 {% endblock %}
 
 {% block content %}
-<div class="jumbotron">
-    <h1 class="display-4">Welcome to the Inventory System</h1>
-    <p class="lead">Manage your products efficiently and effectively.</p>
-    <hr class="my-4">
-    <p>Use the buttons below to navigate through the system.</p>
-    {% if current_user.is_authenticated %}
-    <form action="{{ url_for('routes.search_product') }}" method="post" class="form-inline my-2 my-lg-0">
-        <input class="form-control mr-sm-2" type="text" placeholder="Search" name="search" aria-label="Search" id="searchInput">
-        <button class="btn btn-outline-success my-2 my-sm-0" type="submit" id="searchButton">Search</button>
-    </form>
-    <br>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.add_product') }}" role="button" id="addDataButton">Add Product</a>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.upload_csv') }}" role="button">Upload CSV</a>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.view_stock') }}" role="button">View Stock</a>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.make_sale') }}" role="button">Make Sale</a>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.sales') }}" role="button">Sales</a>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.invoices') }}" role="button">Invoices</a>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.print_stock_pdf') }}" role="button">Print Stock Report</a>
-    {% else %}
-    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.login') }}" role="button">Login</a>
-    <a class="btn btn-primary btn-lg" href="{{ url_for('routes.register') }}" role="button">Register</a>
-    {% endif %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/custom_index.css') }}">
+
+<div class="row">
+    <div class="col-md-3">
+        <h3>Dashboard</h3>
+        {% if current_user.is_authenticated %}
+        <p>Welcome, {{ current_user.username }}!</p>
+        <a href="{{ url_for('routes.add_product') }}" class="btn btn-primary mb-3">Add Product</a>
+        <a href="{{ url_for('routes.upload_csv') }}" class="btn btn-primary mb-3">Upload CSV</a>
+        <form action="{{ url_for('routes.make_sale') }}" method="get">
+            <button type="submit" class="btn btn-primary mb-3">Make Sale</button>
+        </form>
+        <form action="{{ url_for('routes.sales') }}" method="post">
+            <button type="submit" class="btn btn-primary mb-3">Sales</button>
+        </form>
+        <a href="{{ url_for('routes.invoices') }}" class="btn btn-primary mb-3">Invoices</a>
+        <a href="{{ url_for('routes.stock_report') }}" class="btn btn-primary mb-3">Stock Report</a>
+        {% else %}
+        <a href="{{ url_for('routes.login') }}" class="btn btn-primary mb-3">Login</a>
+        <a href="{{ url_for('routes.register') }}" class="btn btn-primary mb-3">Register</a>
+        {% endif %}
+    </div>
+    <div class="col-md-9">
+        <h1 class="mb-4">Product Inventory</h1>
+        {% if current_user.is_authenticated %}
+        <div class="input-group mb-3">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search products...">
+            <button class="btn btn-primary" type="button" id="searchButton">Search</button>
+        </div>
+        <div class="table-responsive" id="productTableContainer">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Category</th>
+                        <th>Total Pieces</th>
+                        <th>Total Buying Price</th>
+                        <th>Total Selling Price</th>
+                        <th>Total Profit</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="productTableBody">
+                    {% for pre, items in grouped_stock.items() %}
+                    <tr class="table-active">
+                        <td>{{ items[0].item_name }}</td>
+                        <td>{{ items[0].category }}</td>
+                        <td>{{ total_pieces_per_pre[pre] }}</td>
+                        <td>{{ total_bp_summation_per_pre[pre] }}</td>
+                        <td>{{ total_sp_summation_per_pre[pre] }}</td>
+                        <td>{{ total_profit_summation_per_pre[pre] }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="toggleDetails('{{ pre }}')">Expand</button>
+                        </td>
+                    </tr>
+                    <tbody id="{{ pre }}" style="display:none;" class="inner-table">
+                        <tr>
+                            <th>Product Code</th>
+                            <th>Item</th>
+                            <th>Category</th>
+                            <th>Type Material</th>
+                            <th>Size</th>
+                            <th>Color</th>
+                            <th>Description</th>
+                            <th>Buying Price</th>
+                            <th>Selling Price</th>
+                            <th>Profit</th>
+                            <th>Quantity</th>
+                            <th>Actions</th>
+                        </tr>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.product_code }}</td>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.category }}</td>
+                            <td>{{ item.type_material }}</td>
+                            <td>{{ item.size }}</td>
+                            <td>{{ item.color }}</td>
+                            <td>{{ item.description }}</td>
+                            <td>{{ item.buying_price }}</td>
+                            <td>{{ item.selling_price }}</td>
+                            <td>{{ item.profit }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>
+                                <a href="{{ url_for('routes.update_product', code=item.product_code) }}" class="btn btn-warning btn-sm">Update</a>
+                                <form action="{{ url_for('routes.delete_product', code=item.product_code) }}" method="post" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div>
+                <h4>Total Pieces: {{ total_pieces }}</h4>
+                <h4>Total Buying Price Summation: {{ total_bp_summation }}</h4>
+                <h4>Total Selling Price Summation: {{ total_sp_summation }}</h4>
+                <h4>Total Profit Summation: {{ total_profit_summation }}</h4>
+            </div>
+        </div>
+        {% else %}
+        <p>Please <a href="{{ url_for('routes.login') }}">login</a> to access the inventory system.</p>
+        {% endif %}
+    </div>
 </div>
+
+<script>
+function toggleDetails(pre) {
+    var tbody = document.getElementById(pre);
+    if (tbody.style.display === "none") {
+        tbody.style.display = "table-row-group";
+    } else {
+        tbody.style.display = "none";
+    }
+}
+</script>
 {% endblock %}

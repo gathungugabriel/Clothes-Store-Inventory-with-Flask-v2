@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}
+Stock Report
+{% endblock %}
+
+{% block content %}
+<h2>Stock Report</h2>
+
+<form method="POST" action="{{ url_for('routes.stock_report') }}">
+    <div class="form-group">
+        <input type="text" name="search_term" class="form-control" placeholder="Search by product code or item name">
+    </div>
+    <button type="submit" class="btn btn-primary">Filter</button>
+</form>
+
+{% if stock %}
+    <table class="table table-bordered mt-4">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>PRE</th>
+                <th>Code</th>
+                <th>Item</th>
+                <th>Category</th>
+                <th>Type Material</th>
+                <th>Size</th>
+                <th>Color</th>
+                <th>Description</th>
+                <th>Buying Price</th>
+                <th>Selling Price</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody id="stock-body">
+            {% for item in stock %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.pre }}</td>
+                    <td>{{ item.product_code }}</td>
+                    <td>{{ item.item_name }}</td>
+                    <td>{{ item.category }}</td>
+                    <td>{{ item.type_material }}</td>
+                    <td>{{ item.size }}</td>
+                    <td>{{ item.color }}</td>
+                    <td>{{ item.description }}</td>
+                    <td class="buying-price">{{ item.buying_price }}</td>
+                    <td class="selling-price">{{ item.selling_price }}</td>
+                    <td class="quantity">{{ item.quantity }}</td>
+                </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="9"><strong>Totals:</strong></td>
+                <td id="total-buying-price"><strong>0</strong></td>
+                <td id="total-selling-price"><strong>0</strong></td>
+                <td id="total-quantity"><strong>0</strong></td>
+            </tr>
+        </tbody>
+    </table>
+    <a href="{{ url_for('routes.download_stock_pdf') }}" class="btn btn-primary">Download PDF</a>
+    <a href="{{ url_for('routes.download_stock_csv') }}" class="btn btn-primary">Download CSV</a>
+{% else %}
+    <p>No stock data available.</p>
+{% endif %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let totalBuyingPrice = 0;
+    let totalSellingPrice = 0;
+    let totalQuantity = 0;
+
+    document.querySelectorAll("#stock-body .buying-price").forEach(function(element) {
+        totalBuyingPrice += parseFloat(element.innerText);
+    });
+
+    document.querySelectorAll("#stock-body .selling-price").forEach(function(element) {
+        totalSellingPrice += parseFloat(element.innerText);
+    });
+
+    document.querySelectorAll("#stock-body .quantity").forEach(function(element) {
+        totalQuantity += parseInt(element.innerText);
+    });
+
+    document.getElementById("total-buying-price").innerHTML = `<strong>${totalBuyingPrice.toFixed(2)}</strong>`;
+    document.getElementById("total-selling-price").innerHTML = `<strong>${totalSellingPrice.toFixed(2)}</strong>`;
+    document.getElementById("total-quantity").innerHTML = `<strong>${totalQuantity}</strong>`;
+});
+</script>
+
+{% endblock %}

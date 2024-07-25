@@ -8,16 +8,29 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), index=True, unique=True, nullable=False)
     email = db.Column(db.String(120), index=True, unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    is_admin = db.Column(db.Boolean, default=False)
+    role = db.Column(db.String(20), nullable=False, default='attendant')  # 'admin' or 'attendant'
 
     def __repr__(self):
-        return '<User {}>'.format(self.username)
+        return f'<User {self.username}>'
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def is_admin(self):
+        return self.role == 'admin'
+
+    def has_permission(self, permission):
+        permissions = {
+            'add_product': self.is_admin(),
+            'update_product': self.is_admin(),
+            'delete_product': self.is_admin(),
+            'upload_csv': self.is_admin(),
+            'manage_users': self.is_admin(),
+        }
+        return permissions.get(permission, False)
 
 
 class Product(db.Model):
